@@ -6,7 +6,6 @@ import Context._
 import Events._
 
 trait ProcessActor extends Actor with ActorLogging {
-
   def receiveStart(simContext: SimContext): Event
   def receiveContinue(callback: Any, simContext: SimContext): Event
 
