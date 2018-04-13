@@ -1,4 +1,4 @@
-package com.jcp.simulation
+package com.jcp.simscala
 
 import akka.actor.{ Actor, ActorLogging }
 import Commands._

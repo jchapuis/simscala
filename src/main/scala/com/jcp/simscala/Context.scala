@@ -1,4 +1,4 @@
-package com.jcp.simulation
+package com.jcp.simscala
 import com.markatta.timeforscala.{ Duration, Instant }
 import Events._
 
