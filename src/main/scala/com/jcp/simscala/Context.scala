@@ -1,38 +1,38 @@
 package com.jcp.simscala
+import akka.actor.ActorSystem
 import com.jcp.simscala.Events._
 import com.markatta.timeforscala.Instant
 import monocle.macros.GenLens
-import scalaz.Heap
 
 object Context {
   case class SimTime(now: Instant, initialTime: Instant)
   object SimTime {
     val epoch = SimTime(Instant.Epoch, Instant.Epoch)
   }
-  case class SimContext(time: SimTime, processStack: Seq[ProcessStart], eventQueue: Heap[TimeoutEvent[_]])
+  case class SimContext(time: SimTime,
+                        processStack: Seq[Process],
+                        conditions: Seq[Condition],
+                        triggeredEvents: Set[Event])
 
   object SimContext {
-    val init = SimContext(SimTime.epoch, Nil, Heap.Empty[TimeoutEvent[_]])
+    val init                             = SimContext(SimTime.epoch, Nil, Nil, Set())
     val contextLens: GenLens[SimContext] = GenLens[SimContext]
     val contextTimeLens                  = contextLens(_.time)
-    val eventQueueLens                   = contextLens(_.eventQueue)
-    val processStackLens = contextLens(_.processStack)
+    val processStackLens                 = contextLens(_.processStack)
+    val conditionsLens                   = contextLens(_.conditions)
+    val triggeredEventsLens              = contextLens(_.triggeredEvents)
 
-    implicit class SimContextOps(simContext: SimContext) {
-      def stackHead: ProcessStart = simContext.processStack.head
-      def withStackTail: SimContext = processStackLens.modify(_.tail)(simContext)
-      def pushOnStack(process: ProcessStart): SimContext = processStackLens.modify(Seq(process) ++ _)(simContext)
-      def enqueueTimeout(timeout: TimeoutEvent[_]): SimContext =
-        eventQueueLens.modify(_ + timeout)(simContext)
-      def dequeueNextTimeout(): (TimeoutEvent[_], SimContext) = {
-        val nextTimeout = eventQueueLens.get(simContext).minimum
-        val newContext = eventQueueLens.modify(_.deleteMin)(simContext).withTime(nextTimeout.time)
-        (nextTimeout, newContext)
-      }
-      def withTime(time: Instant): SimContext = contextTimeLens.modify(t => SimTime(time, t.initialTime))(simContext)
-      def now: String = contextTimeLens.get(simContext).now.toString
+    implicit class SimContextOps(simContext: SimContext)(implicit AS: ActorSystem) {
+      def stackHead: Process                         = simContext.processStack.head
+      def withStackTail: SimContext                       = processStackLens.modify(_.tail)(simContext)
+      def pushOnStack(process: Process): SimContext  = processStackLens.modify(Seq(process) ++ _)(simContext)
+      def withTime(time: Instant): SimContext             = contextTimeLens.modify(t => SimTime(time, t.initialTime))(simContext)
+      def now: String                                     = contextTimeLens.get(simContext).now.toString
+      def withCondition(condition: Condition): SimContext = conditionsLens.modify(_ :+ condition)(simContext)
+      def matchingConditions: Seq[Condition] = simContext.conditions.filter(c => c.events.forall(simContext.triggeredEvents.contains))
+      def withoutCondition(condition: Condition): SimContext = conditionsLens.modify(_.filterNot(_ == condition))(simContext)
+      def withTriggeredEvent(event: Event): SimContext = triggeredEventsLens.modify(_ + event)(simContext)
+      def eventFactory: EventFactory = EventFactory(simContext)
     }
   }
 }
-
-

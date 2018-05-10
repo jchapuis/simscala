@@ -8,10 +8,6 @@ object Commands {
     def simContext: SimContext
   }
 
-  implicit class SimCommandOps(command: SimCommand)(implicit AS: ActorSystem) {
-    def eventFactory: EventFactory = EventFactory(command.simContext)
-  }
-
   case class StartCommand(simContext: SimContext)(implicit AS: ActorSystem) extends SimCommand
   case class CallbackCommand[T](message: CallbackMessage, value: T, simContext: SimContext)(implicit AS: ActorSystem)
     extends SimCommand

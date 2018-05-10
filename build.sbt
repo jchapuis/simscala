@@ -9,7 +9,6 @@ libraryDependencies ++= Seq(
   "com.markatta"               %% "timeforscala"   % "1.6",
   "com.github.julien-truffaut" %% "monocle-core"   % "1.5.0",
   "com.github.julien-truffaut" %% "monocle-macro"  % "1.5.0",
-  "org.scalaz"                 %% "scalaz-core"    % "7.2.22",
   "ch.qos.logback"             % "logback-classic" % "1.2.3",
   "com.typesafe.scala-logging" %% "scala-logging"  % "3.9.0",
   "com.typesafe.akka" %% "akka-slf4j" % "2.5.12",

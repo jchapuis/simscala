@@ -1,13 +1,18 @@
 package com.jcp.simscala
 
+import akka.actor.ActorSystem
 import akka.dispatch.{Envelope, UnboundedStablePriorityMailbox}
-import com.markatta.timeforscala.Instant
+import com.jcp.simscala.EnvironmentCommands.EnvironmentCommand
+import com.jcp.simscala.Events.Event
+import com.typesafe.config.Config
 
-case class TimedMessage(time: Instant, message: Any)
-
-class TimedMessagesPriorityMailbox extends UnboundedStablePriorityMailbox(
-  (o1: Envelope, o2: Envelope) => (o1.message, o2.message) match {
-    case (TimedMessage(t1, _), TimedMessage(t2, _)) => t1.compareTo(t2)
-    case (_, _) => 0  // rely on FIFO
-  }
-)
+class EventsPriorityMailbox(settings: ActorSystem.Settings, config: Config)
+  extends UnboundedStablePriorityMailbox(
+    (o1: Envelope, o2: Envelope) =>
+      (o1.message, o2.message) match {
+        case (evt1: Event, evt2: Event)                => evt1.time.compareTo(evt2.time)
+        case (command: EnvironmentCommand, other: Any) => 1 // commands are priority
+        case (other: Any, command: EnvironmentCommand) => -1
+        case (_, _)                                    => 0 // rely on FIFO
+    }
+  )

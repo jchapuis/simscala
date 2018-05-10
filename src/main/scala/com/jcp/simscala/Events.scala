@@ -1,58 +1,72 @@
 package com.jcp.simscala
 
 import akka.actor.ActorRef
-import com.jcp.simscala.Context._
-import com.markatta.timeforscala.{Duration, Instant}
-import monocle.Lens
-import scalaz.Order
+import com.markatta.timeforscala.{Duration, Instant, _}
 
 object Events {
   type EventName = String
-  val endEventName     = "_end"
-  val timeoutEventName = "_timeout"
+  val endEventName    = "_end"
+  val delayedCallback = "_delayedcallback"
+  val allOf           = "allOf"
+  val anyOf           = "anyOf"
 
   type CallbackMessage = Any
 
   sealed trait Event {
     def name: EventName
-    def simContext: SimContext
+    def time: Instant
   }
 
   sealed trait HasValue[T] {
     def value: T
   }
 
-  object Event {
-    implicit class EventOps[E <: Event](event: E)(implicit eventContextLens: Lens[E, SimContext]) {
-      private val eventTimeLens    = eventContextLens composeLens SimContext.contextTimeLens
-      def withTime(simTime: Instant): E =
-        eventTimeLens.set(SimTime(eventTimeLens.get(event).initialTime, simTime))(event)
-    }
-  }
-
-  case class TimeoutEvent[T](delay: Duration,
-                             time: Instant,
-                             simContext: SimContext,
-                             callbackMessage: CallbackMessage,
-                             value: T)
+  case class DelayedCallbackEvent[T](delay: Duration,
+                                     creationTime: Instant,
+                                     callbackProcess: Process,
+                                     callbackMessage: CallbackMessage,
+                                     value: T)
     extends Event
     with HasValue[T] {
-    def name = simContext.processStack.head.name + timeoutEventName
-  }
-  object TimeoutEvent {
-    implicit val ordering: Ordering[TimeoutEvent[_]] = (x: TimeoutEvent[_], y: TimeoutEvent[_]) =>
-      x.time.compareTo(y.time)
-    implicit val order: Order[TimeoutEvent[_]] = Order.fromScalaOrdering
+    def name                   = callbackProcess.name + delayedCallback
+    override def time: Instant = creationTime + delay
   }
 
-  case class ProcessStart(processActor: ActorRef,
-                          name: EventName,
-                          simContext: SimContext,
-                          callbackParentOnEnd: CallbackMessage)
+  case class Process(processActor: ActorRef,
+                     name: EventName,
+                     time: Instant,
+                     callbackMessageOnEnd: CallbackMessage)
+    extends Event {}
+
+  case class ProcessEnd[T](process: Process, time: Instant, value: T)
     extends Event
-
-  case class ProcessEnd[T](process: ProcessStart, simContext: SimContext, value: T) extends Event with HasValue[T] {
+    with HasValue[T] {
     def name = process.name + endEventName
   }
 
+  case class ConditionMatchedEvent(condition: Condition, time: Instant) extends Event {
+    override def name: EventName = s"condition match: ${condition.name}"
+  }
+
+  trait Condition extends Event {
+    def events: Seq[Event]
+    def callbackProcess: Process
+    def callbackMessage: CallbackMessage
+  }
+
+  case class AllOf(events: Seq[Event],
+                   time: Instant,
+                   callbackProcess: Process,
+                   callbackMessage: CallbackMessage)
+    extends Condition {
+    def name = s"$allOf ${events.map(_.name).mkString(", ")}"
+  }
+
+  case class AnyOf(events: Seq[Event],
+                   time: Instant,
+                   callbackProcess: Process,
+                   callbackMessage: CallbackMessage)
+    extends Condition {
+    def name = s"$anyOf ${events.map(_.name).mkString(", ")}"
+  }
 }
