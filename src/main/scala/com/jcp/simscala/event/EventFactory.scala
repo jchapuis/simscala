@@ -1,8 +1,9 @@
-package com.jcp.simscala
-import akka.actor.{ ActorSystem, Props }
-import com.jcp.simscala.Context.SimContext
-import com.jcp.simscala.Events._
-import com.markatta.timeforscala._
+package com.jcp.simscala.event
+
+import akka.actor.{ActorSystem, Props}
+import com.jcp.simscala.context.SimContext
+import com.jcp.simscala.event.Event.{CallbackMessage, EventName}
+import com.jcp.simscala.process.{ProcessActor, ProcessBehavior}
 
 case class EventFactory(simContext: SimContext)(implicit AS: ActorSystem) {
   private def now            = simContext.time.now
