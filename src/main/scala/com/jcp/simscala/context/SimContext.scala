@@ -1,7 +1,7 @@
 package com.jcp.simscala.context
 
 import akka.actor.ActorSystem
-import com.jcp.simscala.event.{Condition, Event, EventFactory, Process}
+import com.jcp.simscala.event.{ Condition, Event, EventFactory, Process }
 import com.markatta.timeforscala.Instant
 import monocle.macros.GenLens
 
@@ -23,7 +23,7 @@ object SimContext {
     def withStackTail: SimContext                       = processStackLens.modify(_.tail)(simContext)
     def pushOnStack(process: Process): SimContext       = processStackLens.modify(Seq(process) ++ _)(simContext)
     def withTime(time: Instant): SimContext             = contextTimeLens.modify(t => SimTime(time, t.initialTime))(simContext)
-    def now: String                                     = contextTimeLens.get(simContext).now.toString
+    def now: Instant                                    = contextTimeLens.get(simContext).now
     def withCondition(condition: Condition): SimContext = conditionsLens.modify(_ :+ condition)(simContext)
     def matchingConditions: Seq[Condition] =
       simContext.conditions.filter(c => c.events.forall(simContext.triggeredEvents.contains))
