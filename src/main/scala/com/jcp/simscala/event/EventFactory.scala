@@ -1,37 +1,37 @@
 package com.jcp.simscala.event
 
-import akka.actor.{ActorSystem, Props}
+import akka.actor.{ ActorSystem, Props }
 import com.jcp.simscala.context.SimContext
-import com.jcp.simscala.event.Event.{CallbackMessage, EventName}
-import com.jcp.simscala.process.{ProcessActor, ProcessBehavior}
+import com.jcp.simscala.event.Event.{ CallbackMessage, EventName }
+import com.jcp.simscala.process.{ ProcessActor, ProcessBehavior }
+import com.jcp.simscala.resource.Resource
 
 case class EventFactory(simContext: SimContext)(implicit AS: ActorSystem) {
   private def now            = simContext.time.now
   private def currentProcess = simContext.processStack.head
 
   def process(props: Props, name: EventName, callbackMessage: CallbackMessage): Process =
-    Process(AS.actorOf(props), name, now, callbackMessage)
+    Process(AS.actorOf(props, name), name, now, callbackMessage)
   def process(processBehavior: ProcessBehavior, callbackMessage: CallbackMessage): Process =
     Process(
-      AS.actorOf(ProcessActor.props(processBehavior)),
+      AS.actorOf(ProcessActor.props(processBehavior), processBehavior.name),
       processBehavior.name,
       now,
       callbackMessage
     )
-
-  def delayedCallback[T](delay: com.markatta.timeforscala.Duration,
-                         callbackMessage: CallbackMessage,
-                         value: T): DelayedCallbackEvent[T] =
+  def delayedCallback[T](delay: com.markatta.timeforscala.Duration, callbackMessage: CallbackMessage, value: T) =
     DelayedCallbackEvent[T](delay, now, currentProcess, callbackMessage, value)
-  def delayedCallback(delay: com.markatta.timeforscala.Duration,
-                      callbackMessage: CallbackMessage): DelayedCallbackEvent[Unit] =
+  def delayedCallback(delay: com.markatta.timeforscala.Duration, callbackMessage: CallbackMessage) =
     DelayedCallbackEvent[Unit](delay, now, currentProcess, callbackMessage, ())
   def processEnd[T](value: T)                = ProcessEnd(simContext.stackHead, now, value)
   def conditionMatched(condition: Condition) = ConditionMatchedEvent(condition, now)
-  def allOf[T](events: Seq[Event], callbackProcess: Process, callbackMessage: Any) =
-    AllOf(events, now, callbackProcess, callbackMessage)
-  def anyOf[T](events: Seq[Event], callbackProcess: Process, callbackMessage: Any) =
-    AnyOf(events, now, callbackProcess, callbackMessage)
+  def allOf[T](events: List[Event], callbackMessage: Any) =
+    AllOf(events, now, currentProcess, callbackMessage)
+  def anyOf[T](events: List[Event], callbackMessage: Any) =
+    AnyOf(events, now, currentProcess, callbackMessage)
+  def requestResource[R <: Resource](resource: R) = ResourceRequest(resource, currentProcess, now)
+  def releaseResource[R <: Resource](resource: R) = ResourceRelease(resource, currentProcess, now)
+  def never = Event.Never
 }
 
 object EventFactory {

@@ -1,12 +1,14 @@
 package com.jcp.simscala.environment
 
-import akka.actor.{Actor, ActorLogging, ActorSystem, PoisonPill, Props}
-import akka.pattern.{ask, pipe}
+import akka.actor.{ Actor, ActorLogging, ActorSystem, PoisonPill, Props }
+import akka.pattern.{ ask, pipe }
 import akka.util.Timeout
-import com.jcp.simscala.command.SimCommand.{CallbackCommand, StartCommand}
+import com.jcp.simscala.command.SimCommand.{ CallbackCommand, ResourceAcquiredCommand, StartCommand }
 import com.jcp.simscala.context.SimContext
+import com.jcp.simscala.context.SimContext.ResourceOperationResult
 import com.jcp.simscala.environment.EnvironmentCommands._
-import com.jcp.simscala.event.{Event, _}
+import com.jcp.simscala.event.{ Event, _ }
+import com.jcp.simscala.resource.Resource
 import com.jcp.simscala.util.TimeHelpers
 
 import scala.concurrent.duration._
@@ -23,8 +25,10 @@ class DiscreteEnvironmentActor(initialEvent: Event)(implicit AS: ActorSystem) ex
 
   override def receive: Receive = {
     case command: EnvironmentCommand => receiveCommand(command)
-    case event: Event =>
-      logDebug(s"Received event ${event.name}")
+    case event: CompositeEvent =>
+      event.events.foreach(self ! _)
+    case event: Event if event != Event.Never =>
+      logDebug(s"Received event ${event.name}: ${simContext}")
       simContext.matchingConditions.foreach(c => receiveEvent(simContext.eventFactory.conditionMatched(c)))
       receiveEvent(event)
   }
@@ -59,7 +63,7 @@ class DiscreteEnvironmentActor(initialEvent: Event)(implicit AS: ActorSystem) ex
 
       case newProcess @ Process(actorRef, name, _, _) =>
         logDebug(s"Starting process with name '$name'")
-        simContext = simContext.pushOnStack(newProcess)
+        simContext = simContext.pushOnStack(newProcess) // todo this is wrong, stack is per process since with delayed callback we can have other things executing of course
         actorRef ? StartCommand(simContext) pipeTo self
 
       case ProcessEnd(_, _, value) if simContext.processStack.tail.isEmpty =>
@@ -69,13 +73,30 @@ class DiscreteEnvironmentActor(initialEvent: Event)(implicit AS: ActorSystem) ex
 
       case ProcessEnd(Process(_, name, _, callbackMessage), _, value) =>
         logDebug(s"Process with name '$name' ended with value '$value'")
+        sender() ! PoisonPill
         simContext = simContext.withStackTail
         val parentProcess = simContext.stackHead.processActor
         parentProcess ? CallbackCommand(callbackMessage, value, simContext) pipeTo self
 
       case allOf: AllOf => receiveCondition(allOf)
       case anyOf: AnyOf => receiveCondition(anyOf)
+
+      case request: ResourceRequest[_] =>
+        logDebug(s"Request for resource '${request.resource.name}' coming from process '${request.process.name}'")
+        resourceOperation(simContext.requestResource(request))
+
+      case release: ResourceRelease[_] =>
+        logDebug(s"Resource'${release.resource.name}' released by process '${release.process.name}'")
+        resourceOperation(simContext.releaseResource(release))
     }
+  }
+
+  private def resourceOperation[R <: Resource](operation: => ResourceOperationResult[R]) = {
+    val result = operation
+    simContext = result.updatedContext
+    result.optionalAcquiredEvent.foreach(
+      acquired => acquired.process.processActor ? ResourceAcquiredCommand(acquired.resource, simContext) pipeTo self
+    )
   }
 
   private def receiveCondition(condition: Condition): Unit = {

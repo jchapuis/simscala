@@ -14,7 +14,6 @@ class DiscreteEnvironment(actor: ActorRef) extends Environment {
 
   def rewind(to: StopCondition): Event = ???
 
-  // TODO allOf, anyOf
   override def pause(): Unit = ???
 
   override def resume(): Unit = ???
