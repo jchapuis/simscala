@@ -68,7 +68,7 @@ object ChargingShuttles {
         case DrivingDone =>
           totalDrivingTime = totalDrivingTime.plus(DrivingIncrement)
           if (totalDrivingTime >= MaxDrivingTime) {
-            logger.info("Total distance driven, heading to garage")
+            logger.info(s"Total time driven $totalDrivingTime, heading to garage")
             processEnd
           } else {
             logger.info("Driving done, need charging")
