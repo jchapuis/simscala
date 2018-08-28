@@ -25,8 +25,8 @@ case class FifoResourceAccess[R <: Resource](resource: R, processes: Set[Process
       val addAnyPending         = processesLens.modify(_ ++ headPendingProcess.toSet)
       val removeAnyPending      = pendingLens.modify(_.drop(1))
       AccessResponse(
-        (removeProcess compose addAnyPending
-          compose removeAnyPending)(this),
+        (removeProcess andThen addAnyPending
+          andThen removeAnyPending)(this),
         possibleAcquiredEvent
       )
     } else
@@ -37,9 +37,14 @@ case class FifoResourceAccess[R <: Resource](resource: R, processes: Set[Process
   private def resourceAcquired(process: Process, time: Instant) =
     ResourceAcquired(resource, process, time)
 
-  override def toString: String = {
-    s"""${resource.name}(acquired: ${processes.map(_.name).mkString(", ")}, pending: ${processes.map(_.name).mkString(", ")}""".stripMargin
-  }
+  override def toString: String =
+    s"""${resource.name}(acquired: ${if (processes.isEmpty) "none" else processes.map(_.name).mkString(", ")}, pending: ${if (pending.isEmpty)
+         "none"
+       else
+         pending
+           .map(_.process)
+           .map(_.name)
+           .mkString(", ")}""".stripMargin
 }
 
 object FifoResourceAccess {

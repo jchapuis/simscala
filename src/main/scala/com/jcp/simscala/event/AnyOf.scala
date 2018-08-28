@@ -1,12 +1,9 @@
 package com.jcp.simscala.event
 
-import com.jcp.simscala.event.Event.CallbackMessage
+import com.jcp.simscala.event.Event.{ CallbackMessage, EventName }
 import com.markatta.timeforscala.Instant
 
-case class AnyOf(events: Seq[Event],
-                 time: Instant,
-                 callbackProcess: Process,
-                 callbackMessage: CallbackMessage)
+case class AnyOf(events: Seq[EventName], time: Instant, callbackProcess: Process, callbackMessage: CallbackMessage)
   extends Condition {
-  def name = s"anyOf ${events.map(_.name).mkString(", ")}"
+  def name = s"anyOf ${events.mkString(", ")}"
 }

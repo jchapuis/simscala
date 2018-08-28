@@ -4,5 +4,5 @@ import com.jcp.simscala.context.SimContext
 import com.jcp.simscala.event.Event
 
 trait StartBehavior {
-  def receiveStart(simContext: SimContext): Event
+  def start(implicit SC: SimContext): Event
 }

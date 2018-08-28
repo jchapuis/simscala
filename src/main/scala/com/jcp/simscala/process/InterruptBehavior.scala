@@ -4,5 +4,5 @@ import com.jcp.simscala.context.SimContext
 import com.jcp.simscala.event.Event
 
 trait InterruptBehavior {
-  def receiveInterrupt(cause: String, simContext: SimContext): Event
+  def interrupted(cause: String)(implicit SC: SimContext): Event
 }
