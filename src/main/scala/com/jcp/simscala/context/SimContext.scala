@@ -1,6 +1,15 @@
 package com.jcp.simscala.context
 
-import com.jcp.simscala.event.{ Condition, Event, Process, ResourceAcquired, ResourceRelease, ResourceRequest }
+import com.jcp.simscala.event.{
+  AllOf,
+  AnyOf,
+  Condition,
+  Event,
+  Process,
+  ResourceAcquired,
+  ResourceRelease,
+  ResourceRequest
+}
 import com.jcp.simscala.resource.ResourceAccess.AccessResponse
 import com.jcp.simscala.resource.{ Resource, ResourceAccess }
 import com.jcp.simscala.util.TimeHelpers
@@ -67,7 +76,10 @@ object SimContext {
     def withCondition(condition: Condition): SimContext = conditionsLens.modify(_ :+ condition)(simContext)
     def matchingConditions: Seq[Condition] = {
       val triggeredEventNames = simContext.triggeredEvents.map(_.name)
-      simContext.conditions.filter(c => c.events.forall(triggeredEventNames.contains))
+      simContext.conditions.filter {
+        case allOf: AllOf => allOf.events.forall(triggeredEventNames.contains)
+        case anyOf: AnyOf => anyOf.events.exists(triggeredEventNames.contains)
+      }
     }
     def withoutCondition(condition: Condition): SimContext =
       conditionsLens.modify(_.filterNot(_ == condition))(simContext)

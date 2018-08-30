@@ -34,8 +34,9 @@ object ChargingShuttles {
     val AllShuttlesDone      = "shuttlesDone"
 
     def start(implicit SC: SimContext): Event = {
-      val subProcesses = shuttles.map(shuttle => process(shuttle, shuttleDone(shuttle.id)))
-      CompositeEvent(subProcesses ++ Seq(allOf(subProcesses.map(_.endEventName), AllShuttlesDone)))
+      val shuttleProcesses = shuttles.map(shuttle => process(shuttle, shuttleDone(shuttle.id)))
+      val endCondition     = allOf(shuttleProcesses.map(_.endEventName), AllShuttlesDone)
+      CompositeEvent(shuttleProcesses :+ endCondition)
     }
 
     override def receiveConditionMatched(condition: Condition)(implicit SC: SimContext): Event = {
