@@ -318,3 +318,14 @@ object ChargingShuttles {
 
 }
 ```
+
+## Missing
+This is still very early-stage and experimental. Here are some missing points:
+ 1. Stabilize API
+ 1. Full coverage (no tests for now, as the API was still in flux)
+ 1. Example implementation of all SimPy's examples
+ 1. Pause/resume functionality
+ 1. Record/replay of runs using akka event journaling 
+ 1. Real-time and delta-time modes
+ 1. Stochastic generation methods
+ 1. ...
